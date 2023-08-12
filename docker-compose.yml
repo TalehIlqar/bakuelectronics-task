@@ -1,0 +1,52 @@
+version: '3'
+
+services:
+  web:
+    build: .
+    command: bash -c " python /app/manage.py makemigrations --noinput && python /app/manage.py migrate users && python /app/manage.py migrate django_celery_beat --database=celery_db && python /app/manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongodb
+    environment:
+      - DEBUG=True
+      - DJANGO_DB_HOST=mongodb
+
+  mongodb:
+    image: mongo:latest
+
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_db:/data/db
+
+  redis:
+    image: redis:5
+    restart: "always"
+    container_name: redis
+    command: redis-server --requirepass $REDIS_PASSWORD
+    ports:
+      - 6379:6379
+    volumes:
+      - ./redisdb:/var/lib/redis
+    env_file: .env
+
+  celery: &celery
+    container_name: celery
+    build:
+      context: .
+      dockerfile: celery.dockerfile
+    env_file: .env
+    volumes:
+      - ./:/app
+    command: bash -c "cd /app/ && celery --app=core.celery:app worker -B --loglevel=INFO"
+    depends_on:
+      - web
+      - redis
+    links:
+      - redis
+
+volumes:
+  mongo_db:
