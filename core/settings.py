@@ -90,6 +90,7 @@ DATABASES = {
     },
 }
 
+DATABASE_ROUTERS = ["core.db_routers.CeleryBeatRouter"]
 DJANGO_CELERY_BEAT_DB_ALIAS = "celery_db"
 
 
